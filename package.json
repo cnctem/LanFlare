@@ -1,0 +1,71 @@
+{
+  "name": "lanflare",
+  "version": "1.0.0",
+  "description": "LAN file transfer & shared clipboard app",
+  "author": "LanFlare",
+  "main": "dist/main.js",
+  "scripts": {
+    "tsc": "tsc",
+    "copyassets": "node -e \"const fs=require('fs');fs.mkdirSync('dist/src/assets',{recursive:true});fs.copyFileSync('src/assets/web-receiver.html','dist/src/assets/web-receiver.html');\"",
+    "start": "tsc && npm run copyassets && electron .",
+    "dev": "tsc && npm run copyassets && electron .",
+    "build": "tsc && npm run copyassets && electron-builder",
+    "build:win": "tsc && npm run copyassets && electron-builder --win",
+    "build:mac": "tsc && npm run copyassets && electron-builder --mac",
+    "build:linux": "tsc && npm run copyassets && electron-builder --linux",
+    "build:all": "tsc && npm run copyassets && electron-builder --win --linux --mac"
+  },
+  "build": {
+    "appId": "com.lanflare.app",
+    "productName": "LanFlare",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "dist/main.js",
+      "dist/src/**/*",
+      "src/renderer/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "@types/ws": "^8.18.1",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}

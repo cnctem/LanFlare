@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>LanFlare - Web 接收</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{--accent:#6366f1;--accent2:#a855f7;--surface:#16163a;--bg:#0a0a1a;--border:rgba(99,102,241,0.15);--muted:#8888aa;--dim:#5a5a7a;}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:#e8e8f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 16px 60px;}
+  /* ---- Header ---- */
+  .header{text-align:center;margin-bottom:32px;}
+  .header h1{font-size:26px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;}
+  .header p{color:var(--muted);font-size:13px;}
+  .device-info{display:inline-flex;align-items:center;gap:8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:7px 14px;margin-top:10px;font-size:13px;}
+  .dot{width:8px;height:8px;border-radius:50%;background:#06b6d4;box-shadow:0 0 8px #06b6d4;flex-shrink:0;}
+  /* ---- QR ---- */
+  .qr-wrap{margin-top:14px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  #qrcode canvas,#qrcode img{border-radius:8px;border:3px solid rgba(99,102,241,0.2);}
+  .qr-hint{font-size:11px;color:var(--dim);}
+  /* ---- Layout ---- */
+  .container{width:100%;max-width:620px;}
+  .card{background:rgba(22,22,58,0.75);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:14px;backdrop-filter:blur(12px);}
+  .card-title{font-size:15px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  /* ---- Upload zone ---- */
+  .upload-zone{border:2px dashed rgba(99,102,241,0.3);border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+  .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(99,102,241,0.06);}
+  .upload-zone p{color:var(--muted);margin-top:10px;font-size:14px;}
+  .upload-zone .hint{font-size:12px;color:var(--dim);}
+  input[type="file"]{display:none;}
+  /* ---- Progress ---- */
+  .progress-wrap{margin-top:14px;display:none;}
+  .progress-bar{height:6px;background:rgba(99,102,241,0.1);border-radius:3px;overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:3px;transition:width .25s;width:0%;}
+  .progress-text{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:5px;}
+  /* ---- Textarea ---- */
+  textarea{width:100%;height:110px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:#e8e8f0;padding:12px;font-size:14px;font-family:inherit;resize:vertical;outline:none;transition:border-color .2s;}
+  textarea:focus{border-color:var(--accent);}
+  .paste-hint{font-size:11px;color:var(--dim);margin-top:6px;}
+  /* ---- Buttons ---- */
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit;}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 2px 12px rgba(99,102,241,0.3);}
+  .btn-primary:hover{box-shadow:0 4px 20px rgba(99,102,241,0.5);transform:translateY(-1px);}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+  .btn-ghost{background:rgba(99,102,241,0.08);color:#e8e8f0;border:1px solid var(--border);}
+  .btn-ghost:hover{background:rgba(99,102,241,0.14);}
+  /* ---- Records ---- */
+  .record-list{display:flex;flex-direction:column;gap:6px;}
+  .record-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(99,102,241,0.04);border:1px solid transparent;border-radius:10px;animation:slideIn .25s;}
+  .record-item:hover{border-color:var(--border);background:rgba(99,102,241,0.07);}
+  @keyframes slideIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+  .record-icon{font-size:18px;flex-shrink:0;}
+  .record-info{flex:1;min-width:0;}
+  .record-name{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .record-meta{font-size:11px;color:var(--dim);margin-top:2px;}
+  .record-actions{display:flex;gap:4px;flex-shrink:0;}
+  .icon-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:4px;border-radius:6px;transition:.15s;font-size:14px;}
+  .icon-btn:hover{background:rgba(99,102,241,0.1);color:#e8e8f0;}
+  .empty-hint{color:var(--dim);font-size:13px;text-align:center;padding:20px;}
+  /* ---- Tab bar ---- */
+  .tab-bar{display:flex;gap:4px;margin-bottom:14px;background:rgba(99,102,241,0.06);border:1px solid var(--border);border-radius:10px;padding:4px;}
+  .tab-btn{flex:1;padding:8px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;border-radius:7px;transition:.15s;font-family:inherit;}
+  .tab-btn.active{background:rgba(99,102,241,0.18);color:#e8e8f0;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+  /* ---- Download list ---- */
+  .dl-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;}
+  .dl-item .dl-name{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dl-item .dl-meta{font-size:11px;color:var(--dim);}
+  /* ---- Toast ---- */
+  .toast{position:fixed;top:16px;right:16px;padding:11px 16px;background:#1a1a40;border:1px solid var(--border);border-radius:10px;font-size:13px;box-shadow:0 8px 32px rgba(0,0,0,0.5);animation:toastIn .25s,toastOut .3s 2.7s forwards;z-index:200;max-width:280px;}
+  .toast.success{border-left:3px solid #10b981;}
+  .toast.error{border-left:3px solid #ef4444;}
+  .toast.info{border-left:3px solid #06b6d4;}
+  @keyframes toastIn{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
+  @keyframes toastOut{from{opacity:1;}to{opacity:0;}}
+  /* ---- Responsive ---- */
+  @media(max-width:480px){.header h1{font-size:22px;}.card{padding:18px;}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📡 LanFlare</h1>
+  <p>通过浏览器向 Electron 客户端发送文件和文本</p>
+  <div class="device-info">
+    <div class="dot"></div>
+    <span>目标: <strong>{{DEVICE_NAME}}</strong></span>
+    <span style="color:var(--dim)">{{IP}}:{{WEB_PORT}}</span>
+  </div>
+  <div class="qr-wrap">
+    <div id="qrcode"></div>
+    <span class="qr-hint">手机扫码打开</span>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('send',this)">📤 发送</button>
+    <button class="tab-btn" onclick="switchTab('files',this)">📂 已收文件</button>
+  </div>
+
+  <!-- Send Tab -->
+  <div class="tab-panel active" id="tab-send">
+    <!-- File Upload -->
+    <div class="card">
+      <div class="card-title">📁 发送文件</div>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div style="font-size:34px;opacity:0.35">📤</div>
+        <p>点击选择文件 / 拖拽到此处</p>
+        <span class="hint">支持多文件 · 也可直接粘贴 (Ctrl+V)</span>
+      </div>
+      <input type="file" id="fileInput" multiple>
+      <input type="file" id="folderInput" webkitdirectory multiple style="display:none">
+      <div style="margin-top:8px;text-align:center">
+        <span style="font-size:11px;color:var(--dim)">— 或 —</span>
+        <div style="margin-top:6px"><button class="btn btn-ghost" style="font-size:12px" onclick="document.getElementById('folderInput').click()">📁 选择文件夹上传</button></div>
+      </div>
+      <div class="progress-wrap" id="fileProgress">
+        <div class="progress-bar"><div class="progress-fill" id="fileFill"></div></div>
+        <div class="progress-text"><span id="fileStatus">上传中...</span><span id="filePercent">0%</span></div>
+      </div>
+    </div>
+
+    <!-- Text Send -->
+    <div class="card">
+      <div class="card-title">📝 发送文本</div>
+      <textarea id="textInput" placeholder="输入要发送的文本，或直接粘贴 (Ctrl+V)..."></textarea>
+      <p class="paste-hint">💡 在空白处按 Ctrl+V 可自动粘贴剪贴板内容</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="sendText()">发送文本</button>
+        <button class="btn btn-ghost" onclick="clearText()">清空</button>
+      </div>
+    </div>
+
+    <!-- Sent Records -->
+    <div class="card">
+      <div class="card-title">📋 本次发送记录</div>
+      <div class="record-list" id="sentList">
+        <p class="empty-hint">暂无记录</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Files Tab -->
+  <div class="tab-panel" id="tab-files">
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span>📂 已接收的文件</span>
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px" onclick="loadFiles()">🔄 刷新</button>
+      </div>
+      <div id="fileList"><p class="empty-hint">加载中...</p></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+// ---- QR Code ----
+(function(){
+  try {
+    new QRCode(document.getElementById('qrcode'), {
+      text: '{{URL}}',
+      width: 120, height: 120,
+      colorDark: '#6366f1', colorLight: '#0a0a1a',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {}
+})();
+
+// ---- Tabs ----
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'files') loadFiles();
+}
+
+// ---- Drag & Drop ----
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+document.getElementById('folderInput').addEventListener('change', function() { handleFiles(this.files); });
+
+// ---- Global Paste (Ctrl+V) ----
+document.addEventListener('paste', (e) => {
+  const active = document.activeElement;
+  const isText = active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT');
+  const items = Array.from(e.clipboardData?.items || []);
+  const fileItems = items.filter(i => i.kind === 'file');
+  if (fileItems.length && !isText) {
+    e.preventDefault();
+    const dtFiles = fileItems.map(i => i.getAsFile()).filter(Boolean);
+    handleFiles(dtFiles);
+    return;
+  }
+  if (!isText) {
+    const textItem = items.find(i => i.kind === 'string' && i.type === 'text/plain');
+    if (textItem) {
+      textItem.getAsString(str => {
+        document.getElementById('textInput').value = str;
+        showToast('已从剪贴板粘贴文本', 'info');
+      });
+    }
+  }
+});
+
+// ---- Upload Files ----
+async function handleFiles(files) {
+  if (!files || !files.length) return;
+  const filesArr = Array.from(files);
+  let folderName = null;
+  if (filesArr[0] && filesArr[0].webkitRelativePath) {
+    folderName = filesArr[0].webkitRelativePath.split('/')[0];
+  }
+  const progress = document.getElementById('fileProgress');
+  const fill = document.getElementById('fileFill');
+  const status = document.getElementById('fileStatus');
+  const percent = document.getElementById('filePercent');
+  progress.style.display = 'block';
+  let failCount = 0;
+
+  for (let i = 0; i < filesArr.length; i++) {
+    const f = filesArr[i];
+    const relPath = f.webkitRelativePath || null;
+    const displayName = relPath || f.name;
+    status.textContent = '上传 ' + displayName + ' (' + (i+1) + '/' + filesArr.length + ')';
+    fill.style.width = '0%';
+    percent.textContent = '0%';
+    try {
+      await uploadFile(f, (p) => { fill.style.width = p + '%'; percent.textContent = p + '%'; }, relPath, folderName);
+      addRecord('📄', displayName, formatSize(f.size), 'file');
+    } catch (err) {
+      failCount++;
+      showToast('上传失败: ' + (f.name) + ' — ' + err.message, 'error');
+    }
+  }
+  fill.style.width = '100%'; percent.textContent = '100%';
+  status.textContent = (filesArr.length - failCount) + '/' + filesArr.length + ' 个文件完成';
+  if (filesArr.length - failCount > 0) showToast('已发送 ' + (filesArr.length - failCount) + ' 个文件 ✓', 'success');
+  fileInput.value = '';
+  const folderInput = document.getElementById('folderInput');
+  if (folderInput) folderInput.value = '';
+}
+
+function uploadFile(file, onProgress, relativePath, folderName) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload');
+    xhr.setRequestHeader('X-Filename', encodeURIComponent(file.name));
+    xhr.setRequestHeader('X-Filesize', file.size);
+    if (relativePath) xhr.setRequestHeader('X-Relative-Path', encodeURIComponent(relativePath));
+    if (folderName) xhr.setRequestHeader('X-Folder-Name', encodeURIComponent(folderName));
+    xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(Math.round(e.loaded/e.total*100)); };
+    xhr.onload = () => { if (xhr.status === 200) resolve(); else reject(new Error('HTTP ' + xhr.status)); };
+    xhr.onerror = () => reject(new Error('网络错误'));
+    xhr.send(file);
+  });
+}
+
+// ---- Send Text ----
+async function sendText() {
+  const text = document.getElementById('textInput').value.trim();
+  if (!text) return showToast('请输入文本内容', 'error');
+  try {
+    const res = await fetch('/text', { method: 'POST', headers: {'Content-Type':'text/plain;charset=utf-8'}, body: text });
+    if (res.ok) {
+      const preview = text.length > 60 ? text.substring(0,60) + '…' : text;
+      addRecord('📝', preview, text.length + ' 字符', 'text', text);
+      document.getElementById('textInput').value = '';
+      showToast('文本已发送 ✓', 'success');
+    } else { showToast('发送失败: ' + res.status, 'error'); }
+  } catch (e) { showToast('发送失败: ' + e.message, 'error'); }
+}
+
+function clearText() { document.getElementById('textInput').value = ''; }
+
+// ---- Records ----
+function addRecord(icon, name, meta, type, rawText) {
+  const list = document.getElementById('sentList');
+  const empty = list.querySelector('.empty-hint');
+  if (empty) empty.remove();
+  const el = document.createElement('div');
+  el.className = 'record-item';
+  const copyBtn = type === 'text' ? '<button class="icon-btn" title="复制" onclick="copyText(this)" data-text="' + escapeAttr(rawText || name) + '">📋</button>' : '';
+  el.innerHTML = '<span class="record-icon">' + icon + '</span>'
+    + '<div class="record-info"><div class="record-name">' + escapeHtml(name) + '</div><div class="record-meta">' + meta + '</div></div>'
+    + '<div class="record-actions">' + copyBtn + '</div>';
+  list.insertBefore(el, list.firstChild);
+}
+
+function copyText(btn) {
+  const txt = btn.dataset.text;
+  navigator.clipboard.writeText(txt).then(() => showToast('已复制到剪贴板', 'success')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    showToast('已复制', 'success');
+  });
+}
+
+// ---- Files Tab ----
+async function loadFiles() {
+  const list = document.getElementById('fileList');
+  list.innerHTML = '<p class="empty-hint">加载中...</p>';
+  try {
+    const res = await fetch('/files');
+    const data = await res.json();
+    const hasFiles = data.files && data.files.length > 0;
+    const hasFolders = data.folders && data.folders.length > 0;
+    if (!hasFiles && !hasFolders) {
+      list.innerHTML = '<p class="empty-hint">暂无已接收的文件</p>';
+      return;
+    }
+    list.innerHTML = '';
+    if (hasFolders) {
+      data.folders.forEach(folder => {
+        const el = document.createElement('div');
+        el.className = 'dl-item';
+        el.dataset.folder = folder.name;
+        el.innerHTML = '<span style="font-size:18px">📁</span>'
+          + '<div style="flex:1;min-width:0"><div class="dl-name">' + escapeHtml(folder.name) + '</div>'
+          + '<div class="dl-meta">' + folder.count + ' 个文件 · ' + formatSize(folder.size) + ' · ' + formatDate(folder.mtime) + '</div></div>'
+          + '<button class="btn btn-ghost" style="padding:5px 12px;font-size:12px" onclick="toggleFolderFiles(' + JSON.stringify(folder.name) + ',this)">展开</button>';
+        list.appendChild(el);
+      });
+    }
+    if (hasFiles) {
+      data.files.forEach(f => {
+        const el = document.createElement('div');
+        el.className = 'dl-item';
+        el.innerHTML = '<span style="font-size:18px">📄</span>'
+          + '<div style="flex:1;min-width:0"><div class="dl-name">' + escapeHtml(f.name) + '</div><div class="dl-meta">' + formatSize(f.size) + ' · ' + formatDate(f.mtime) + '</div></div>'
+          + '<a href="/download/' + encodeURIComponent(f.name) + '" class="btn btn-ghost" style="padding:5px 12px;font-size:12px;text-decoration:none" download>⬇ 下载</a>';
+        list.appendChild(el);
+      });
+    }
+  } catch(e) { list.innerHTML = '<p class="empty-hint">加载失败: ' + e.message + '</p>'; }
+}
+
+async function toggleFolderFiles(folderName, btn) {
+  const row = btn.closest('.dl-item');
+  const existing = row.nextElementSibling;
+  if (existing && existing.classList.contains('folder-sub-list')) {
+    existing.remove(); btn.textContent = '展开'; return;
+  }
+  btn.textContent = '加载中...';
+  try {
+    const res = await fetch('/folder-files?name=' + encodeURIComponent(folderName));
+    const data = await res.json();
+    const subList = document.createElement('div');
+    subList.className = 'folder-sub-list';
+    subList.style.cssText = 'margin:0 0 8px 28px;border-left:2px solid rgba(99,102,241,0.25);padding-left:10px;';
+    if (!data.files || data.files.length === 0) {
+      subList.innerHTML = '<p style="font-size:12px;color:var(--dim);padding:8px">文件夹为空</p>';
+    } else {
+      data.files.forEach(f => {
+        const el = document.createElement('div');
+        el.className = 'dl-item';
+        el.style.marginBottom = '4px';
+        const dlPath = encodeURIComponent(folderName) + '/' + f.name.split('/').map(encodeURIComponent).join('/');
+        el.innerHTML = '<span style="font-size:14px">📄</span>'
+          + '<div style="flex:1;min-width:0"><div class="dl-name" style="font-size:12px">' + escapeHtml(f.name) + '</div><div class="dl-meta">' + formatSize(f.size) + '</div></div>'
+          + '<a href="/download/' + dlPath + '" class="btn btn-ghost" style="padding:4px 10px;font-size:11px;text-decoration:none" download>⬇</a>';
+        subList.appendChild(el);
+      });
+    }
+    row.after(subList);
+    btn.textContent = '收起';
+  } catch(e) { showToast('加载失败: ' + e.message, 'error'); btn.textContent = '展开'; }
+}
+
+// ---- Helpers ----
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type||'info');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+function escapeHtml(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escapeAttr(s) { return (s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function formatSize(b) {
+  if (!b) return '0 B';
+  const k=1024, s=['B','KB','MB','GB'];
+  const i = Math.min(Math.floor(Math.log(b)/Math.log(k)), s.length-1);
+  return (b/Math.pow(k,i)).toFixed(1)+' '+s[i];
+}
+function formatDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return d.getFullYear()+'-'+(d.getMonth()+1).toString().padStart(2,'0')+'-'+d.getDate().toString().padStart(2,'0')
+    +' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+}
+</script>
+</body>
+</html>
