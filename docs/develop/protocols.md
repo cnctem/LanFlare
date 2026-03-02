@@ -4,13 +4,13 @@
 
 ## 端口分配
 
-| 端口 | 协议 | 模块 | 用途 |
-|------|------|------|------|
-| 53318 | UDP | Discovery | 设备发现广播 |
-| 53319 | TCP | Transfer | 文件和文本传输 |
-| 53320 | WebSocket | Clipboard Sync | 剪贴板同步 |
-| 53321 | HTTP | Web Receiver | 浏览器文件上传 |
-| 53322 | WebSocket | Connection Auth | 连接授权 |
+| 端口  | 协议      | 模块            | 用途           |
+| ----- | --------- | --------------- | -------------- |
+| 53318 | UDP       | Discovery       | 设备发现广播   |
+| 53319 | TCP       | Transfer        | 文件和文本传输 |
+| 53320 | WebSocket | Clipboard Sync  | 剪贴板同步     |
+| 53321 | HTTP      | Web Receiver    | 浏览器文件上传 |
+| 53322 | WebSocket | Connection Auth | 连接授权       |
 
 ## 1. 设备发现协议 (UDP 53318)
 
@@ -34,17 +34,18 @@
 
 **字段说明**:
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `id` | string | 是 | 设备唯一 ID（UUID v4，每次启动生成） |
-| `name` | string | 是 | 设备名称（操作系统主机名） |
-| `tcpPort` | number | 是 | TCP 传输端口 |
-| `wsPort` | number | 是 | WebSocket 端口 |
-| `platform` | string | 是 | 平台标识（`win32`, `darwin`, `linux`） |
+| 字段       | 类型   | 必填 | 说明                                   |
+| ---------- | ------ | ---- | -------------------------------------- |
+| `id`       | string | 是   | 设备唯一 ID（UUID v4，每次启动生成）   |
+| `name`     | string | 是   | 设备名称（操作系统主机名）             |
+| `tcpPort`  | number | 是   | TCP 传输端口                           |
+| `wsPort`   | number | 是   | WebSocket 端口                         |
+| `platform` | string | 是   | 平台标识（`win32`, `darwin`, `linux`） |
 
 **设备超时**: 6 秒未收到广播则认为设备离线。
 
 **接收处理**:
+
 - 忽略自身 ID 的消息（`data.id === this.deviceId`）
 - 更新设备的 `lastSeen` 时间戳
 - 触发 `devices-changed` 事件通知 UI 更新
@@ -58,6 +59,7 @@
 每个 TCP 连接对应一个传输任务（文件、文本或剪贴板内容）。
 
 **帧格式**:
+
 ```
 [JSON Header]\n\n[Binary/Text Payload]
 ```
@@ -70,13 +72,13 @@
 
 ```typescript
 interface TransferHeader {
-  type: 'file' | 'text' | 'clipboard-text' | 'clipboard-image';
-  fileName?: string;       // 文件名（type=file 时必填）
-  fileSize?: number;       // 文件大小（字节）
-  from: string;            // 发送方设备名
-  folderName?: string;     // 文件夹名（文件夹传输时）
-  relativePath?: string;   // 文件夹内相对路径（文件夹传输时）
-  totalFiles?: number;     // 文件夹内文件总数（文件夹传输时）
+  type: "file" | "text" | "clipboard-text" | "clipboard-image";
+  fileName?: string; // 文件名（type=file 时必填）
+  fileSize?: number; // 文件大小（字节）
+  from: string; // 发送方设备名
+  folderName?: string; // 文件夹名（文件夹传输时）
+  relativePath?: string; // 文件夹内相对路径（文件夹传输时）
+  totalFiles?: number; // 文件夹内文件总数（文件夹传输时）
 }
 ```
 
@@ -114,6 +116,7 @@ interface TransferHeader {
 接收端保存路径: `~/Downloads/LanFlare/MyProject/docs/readme.md`
 
 **文件夹聚合逻辑**:
+
 - 每个文件到达后，以 `${from}::${folderName}` 为键追踪进度
 - 收到所有 `totalFiles` 个文件后发出单次完成事件
 - 60 秒超时保护（防止发送端中途失败导致等待）
@@ -163,10 +166,10 @@ Payload: PNG 格式二进制数据
 
 ```typescript
 interface TransferProgressInfo {
-  id: string;        // 传输任务 ID
-  received: number;  // 已接收字节数
-  total: number;     // 总字节数
-  percent: number;   // 完成百分比 (0-100)
+  id: string; // 传输任务 ID
+  received: number; // 已接收字节数
+  total: number; // 总字节数
+  percent: number; // 完成百分比 (0-100)
 }
 ```
 
@@ -175,15 +178,15 @@ interface TransferProgressInfo {
 ```typescript
 interface TransferCompleteInfo {
   id: string;
-  type: string;          // 传输类型
-  from: string;          // 发送方名称
-  content?: string;      // 文本内容（type=text/clipboard-text 时）
-  fileName?: string;     // 文件名
-  fileSize?: number;     // 文件大小
-  savePath?: string;     // 保存路径
-  timestamp: number;     // 完成时间戳
-  folderName?: string;   // 文件夹名（type=folder 时）
-  totalFiles?: number;   // 文件数量（type=folder 时）
+  type: string; // 传输类型
+  from: string; // 发送方名称
+  content?: string; // 文本内容（type=text/clipboard-text 时）
+  fileName?: string; // 文件名
+  fileSize?: number; // 文件大小
+  savePath?: string; // 保存路径
+  timestamp: number; // 完成时间戳
+  folderName?: string; // 文件夹名（type=folder 时）
+  totalFiles?: number; // 文件数量（type=folder 时）
   folderSavePath?: string; // 文件夹保存路径（type=folder 时）
 }
 ```
@@ -201,6 +204,7 @@ interface TransferCompleteInfo {
 ### 3.1 连接建立
 
 发起方连接到目标设备：
+
 ```
 ws://192.168.1.100:53320
 ```
@@ -211,13 +215,14 @@ ws://192.168.1.100:53320
 
 ```typescript
 interface ClipboardMessage {
-  type: 'clipboard';
-  contentType: 'text' | 'image' | 'files' | 'folder';
-  content: string;        // 文本内容或图片 base64
-  from: string;           // 发送方设备名
-  timestamp: number;      // 时间戳
-  messageId: string;      // 消息唯一 ID（去重用）
-  folderInfo?: {          // 仅 contentType='folder' 时
+  type: "clipboard";
+  contentType: "text" | "image" | "files" | "folder";
+  content: string; // 文本内容或图片 base64
+  from: string; // 发送方设备名
+  timestamp: number; // 时间戳
+  messageId: string; // 消息唯一 ID（去重用）
+  folderInfo?: {
+    // 仅 contentType='folder' 时
     name: string;
     fileCount: number;
     totalSize: number;
@@ -228,6 +233,7 @@ interface ClipboardMessage {
 **消息例子**:
 
 文本同步:
+
 ```json
 {
   "type": "clipboard",
@@ -240,6 +246,7 @@ interface ClipboardMessage {
 ```
 
 图片同步:
+
 ```json
 {
   "type": "clipboard",
@@ -252,6 +259,7 @@ interface ClipboardMessage {
 ```
 
 文件同步:
+
 ```json
 {
   "type": "clipboard",
@@ -264,6 +272,7 @@ interface ClipboardMessage {
 ```
 
 文件夹同步:
+
 ```json
 {
   "type": "clipboard",
@@ -308,6 +317,7 @@ interface ClipboardMessage {
 ### 4.1 连接建立
 
 发起方连接到目标设备的授权服务：
+
 ```
 ws://192.168.1.100:53322
 ```
@@ -375,7 +385,7 @@ ws://192.168.1.100:53322
 ```typescript
 interface AuthRecord {
   deviceId: string;
-  authorizedAt: number;  // 时间戳
+  authorizedAt: number; // 时间戳
 }
 
 // 授权有效期: 3600000ms (1 小时)
@@ -383,6 +393,7 @@ const AUTH_EXPIRY = 3600 * 1000;
 ```
 
 检查授权：
+
 ```typescript
 isAuthorized(deviceId: string): boolean {
   const record = this.authorized.get(deviceId);
@@ -397,22 +408,24 @@ isAuthorized(deviceId: string): boolean {
 
 ### 5.1 端点列表
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/` | 返回 Web 前端页面 |
+| 方法 | 路径      | 说明                 |
+| ---- | --------- | -------------------- |
+| GET  | `/`       | 返回 Web 前端页面    |
 | POST | `/upload` | 上传文件（含文件夹） |
-| POST | `/text` | 上传文本 |
+| POST | `/text`   | 上传文本             |
 
 ### 5.2 身份验证
 
 如果设置了密码，所有请求需包含 `X-Password` 头或 `password` 查询参数：
 
 请求头：
+
 ```
 X-Password: yourpassword
 ```
 
 错误响应（密码错误）：
+
 ```
 HTTP/1.1 401 Unauthorized
 内容: Unauthorized
@@ -421,6 +434,7 @@ HTTP/1.1 401 Unauthorized
 ### 5.3 文件上传
 
 **请求**:
+
 ```
 POST /upload
 Content-Type: application/octet-stream
@@ -432,12 +446,14 @@ X-Filesize: 1048576
 ```
 
 **文件夹上传** (额外 Headers):
+
 ```
 X-Relative-Path: subfolder%2Fdocument.pdf   (URL encoded)
 X-Folder-Name: MyProject                     (URL encoded)
 ```
 
 **成功响应**:
+
 ```
 HTTP/1.1 200 OK
 Content-Type: text/plain
@@ -445,6 +461,7 @@ OK
 ```
 
 **错误响应**:
+
 ```
 HTTP/1.1 500 Internal Server Error
 Content-Type: text/plain
@@ -452,12 +469,14 @@ Upload failed: [错误信息]
 ```
 
 **文件保存路径**:
+
 - 普通文件: `~/Downloads/LanFlare/[filename]`
 - 文件夹文件: `~/Downloads/LanFlare/[folderName]/[relativePath]`
 
 ### 5.4 文本上传
 
 **请求**:
+
 ```
 POST /text
 Content-Type: text/plain; charset=utf-8
@@ -466,6 +485,7 @@ Content-Type: text/plain; charset=utf-8
 ```
 
 **成功响应**:
+
 ```
 HTTP/1.1 200 OK
 Content-Type: text/plain
@@ -477,16 +497,20 @@ OK
 ## 6. 安全考虑
 
 ### 6.1 网络范围
+
 所有服务仅绑定到局域网接口（`0.0.0.0`），实际上通过路由器防火墙限制到局域网范围。
 
 ### 6.2 端口选择
+
 使用高位端口（53318-53322），避免与常用系统服务冲突，减少权限问题。
 
 ### 6.3 身份验证
+
 - 设备传输：连接授权机制（WS 53322）
 - Web 接收：可选密码保护（HTTP Header）
 
 ### 6.4 已知风险
+
 - 传输数据无加密（局域网内认为安全）
 - 设备 ID 每次启动重新生成，理论上可伪造名称
 - Web 接收端密码以明文传输
@@ -494,6 +518,7 @@ OK
 ## 7. 向后兼容性
 
 目前协议版本为 v1（隐式）。未来版本变更时：
+
 - 增量添加字段，旧字段保持兼容
 - 不支持的消息类型静默忽略
 - 协议**主版本**变更时添加 `protocolVersion` 字段
@@ -511,7 +536,7 @@ const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 ### 设备 ID 生成
 
 ```javascript
-const deviceId = crypto.randomBytes(8).toString('hex');
+const deviceId = crypto.randomBytes(8).toString("hex");
 // 或
 const deviceId = Math.random().toString(36).substr(2, 12);
 ```

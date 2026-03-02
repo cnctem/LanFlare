@@ -1,17 +1,17 @@
-import * as net from 'net';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import { EventEmitter } from 'events';
-import { formatSize, generateId } from './utils';
+import * as net from "net";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+import { EventEmitter } from "events";
+import { generateId } from "./utils";
 
 export const TRANSFER_PORT = 53319;
-export const SAVE_DIR = path.join(os.homedir(), 'Downloads', 'LanFlare');
+export const SAVE_DIR = path.join(os.homedir(), "Downloads", "LanFlare");
 
 // ---- Types ----
 
 export interface TransferHeader {
-  type: 'file' | 'text' | 'clipboard-text' | 'clipboard-image';
+  type: "file" | "text" | "clipboard-text" | "clipboard-image";
   fileName?: string;
   fileSize?: number;
   from: string;
@@ -52,7 +52,7 @@ export interface TransferCompleteInfo {
 }
 
 export interface ClipboardData {
-  type: 'text' | 'image';
+  type: "text" | "image";
   text?: string;
   imageBuffer?: Buffer;
 }
@@ -88,12 +88,12 @@ export class TransferServer extends EventEmitter {
       this._handleConnection(socket);
     });
 
-    this.server.listen(TRANSFER_PORT, '0.0.0.0', () => {
+    this.server.listen(TRANSFER_PORT, "0.0.0.0", () => {
       console.log(`Transfer server listening on port ${TRANSFER_PORT}`);
     });
 
-    this.server.on('error', (err) => {
-      console.error('Transfer server error:', err);
+    this.server.on("error", (err) => {
+      console.error("Transfer server error:", err);
     });
   }
 
@@ -104,10 +104,10 @@ export class TransferServer extends EventEmitter {
     let receivedBytes = 0;
     const transferId = generateId();
 
-    socket.on('data', (chunk: Buffer) => {
+    socket.on("data", (chunk: Buffer) => {
       if (!header) {
         headerBuf = Buffer.concat([headerBuf, chunk]);
-        const delimIndex = headerBuf.indexOf('\n\n');
+        const delimIndex = headerBuf.indexOf("\n\n");
         if (delimIndex !== -1) {
           try {
             header = JSON.parse(headerBuf.slice(0, delimIndex).toString()) as TransferHeader;
@@ -116,15 +116,15 @@ export class TransferServer extends EventEmitter {
             return;
           }
           const remaining = headerBuf.slice(delimIndex + 2);
-          
+
           // For folder files, suppress per-file start — folder-start is emitted in _trackFolderFile
           if (!(header.folderName && header.totalFiles && header.totalFiles > 1)) {
             this._initReceive(header, transferId);
           }
 
-          if (header.type === 'text' || header.type === 'clipboard-text') {
+          if (header.type === "text" || header.type === "clipboard-text") {
             headerBuf = remaining;
-          } else if (header.type === 'file' || header.type === 'clipboard-image') {
+          } else if (header.type === "file" || header.type === "clipboard-image") {
             const savePath = this._getSavePath(header);
             const dir = path.dirname(savePath);
             if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -137,7 +137,7 @@ export class TransferServer extends EventEmitter {
           }
         }
       } else {
-        if (header.type === 'text' || header.type === 'clipboard-text') {
+        if (header.type === "text" || header.type === "clipboard-text") {
           headerBuf = Buffer.concat([headerBuf, chunk]);
         } else if (fileStream) {
           fileStream.write(chunk);
@@ -147,21 +147,21 @@ export class TransferServer extends EventEmitter {
       }
     });
 
-    socket.on('end', () => {
+    socket.on("end", () => {
       if (header) {
-        if (header.type === 'text' || header.type === 'clipboard-text') {
+        if (header.type === "text" || header.type === "clipboard-text") {
           const text = headerBuf.toString();
           const info: TransferCompleteInfo = {
             id: transferId,
             type: header.type,
             from: header.from,
             content: text,
-            timestamp: Date.now()
+            timestamp: Date.now(),
           };
-          this.emit('transfer-complete', info);
+          this.emit("transfer-complete", info);
         } else if (fileStream) {
           fileStream.end();
-          
+
           // Check if this is part of a folder transfer
           if (header.folderName && header.totalFiles && header.totalFiles > 1) {
             this._trackFolderFile(header, transferId);
@@ -173,23 +173,23 @@ export class TransferServer extends EventEmitter {
               fileName: header.fileName,
               fileSize: header.fileSize,
               savePath: this._getSavePath(header),
-              timestamp: Date.now()
+              timestamp: Date.now(),
             };
-            this.emit('transfer-complete', info);
+            this.emit("transfer-complete", info);
           }
         }
       }
     });
 
-    socket.on('error', (err) => {
+    socket.on("error", (err) => {
       if (fileStream) fileStream.end();
-      console.error('Transfer socket error:', err);
+      console.error("Transfer socket error:", err);
     });
   }
 
   private _getSavePath(header: TransferHeader): string {
     if (header.relativePath) {
-      return path.join(SAVE_DIR, header.folderName ?? 'received', header.relativePath);
+      return path.join(SAVE_DIR, header.folderName ?? "received", header.relativePath);
     }
     return path.join(SAVE_DIR, header.fileName ?? `clipboard_${Date.now()}.png`);
   }
@@ -201,9 +201,9 @@ export class TransferServer extends EventEmitter {
       from: header.from,
       fileName: header.fileName,
       fileSize: header.fileSize,
-      totalFiles: header.totalFiles
+      totalFiles: header.totalFiles,
     };
-    this.emit('transfer-start', info);
+    this.emit("transfer-start", info);
   }
 
   private _emitProgress(transferId: string, header: TransferHeader, received: number): void {
@@ -212,9 +212,9 @@ export class TransferServer extends EventEmitter {
         id: transferId,
         received,
         total: header.fileSize,
-        percent: Math.round((received / header.fileSize) * 100)
+        percent: Math.round((received / header.fileSize) * 100),
       };
-      this.emit('transfer-progress', info);
+      this.emit("transfer-progress", info);
     }
   }
 
@@ -229,7 +229,7 @@ export class TransferServer extends EventEmitter {
   private _trackFolderFile(header: TransferHeader, transferId: string): void {
     const key = `${header.from}::${header.folderName}`;
     let pf = this.pendingFolders.get(key);
-    
+
     if (!pf) {
       pf = {
         folderName: header.folderName!,
@@ -241,31 +241,31 @@ export class TransferServer extends EventEmitter {
         timer: setTimeout(() => {
           // Safety: emit what we have if timeout (e.g. sender crashed)
           this._emitFolderComplete(key);
-        }, 60000)
+        }, 60000),
       };
       this.pendingFolders.set(key, pf);
-      
+
       // Emit a folder-start event
-      this.emit('transfer-start', {
+      this.emit("transfer-start", {
         id: transferId,
-        type: 'folder',
+        type: "folder",
         from: header.from,
         fileName: header.folderName,
-        totalFiles: header.totalFiles
+        totalFiles: header.totalFiles,
       });
     }
-    
+
     pf.receivedFiles++;
     pf.totalSize += header.fileSize || 0;
-    
+
     // Emit progress for folder
-    this.emit('transfer-progress', {
+    this.emit("transfer-progress", {
       id: transferId,
       received: pf.receivedFiles,
       total: pf.totalFiles,
-      percent: Math.round((pf.receivedFiles / pf.totalFiles) * 100)
+      percent: Math.round((pf.receivedFiles / pf.totalFiles) * 100),
     });
-    
+
     if (pf.receivedFiles >= pf.totalFiles) {
       this._emitFolderComplete(key);
     }
@@ -274,13 +274,13 @@ export class TransferServer extends EventEmitter {
   private _emitFolderComplete(key: string): void {
     const pf = this.pendingFolders.get(key);
     if (!pf) return;
-    
+
     clearTimeout(pf.timer);
     this.pendingFolders.delete(key);
-    
+
     const info: TransferCompleteInfo = {
       id: generateId(),
-      type: 'folder',
+      type: "folder",
       from: pf.from,
       fileName: pf.folderName,
       fileSize: pf.totalSize,
@@ -288,9 +288,9 @@ export class TransferServer extends EventEmitter {
       folderName: pf.folderName,
       totalFiles: pf.receivedFiles,
       folderSavePath: pf.folderSavePath,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    this.emit('transfer-complete', info);
+    this.emit("transfer-complete", info);
   }
 }
 
@@ -306,23 +306,23 @@ export function sendFile(
     const stat = fs.statSync(filePath);
     const fileName = path.basename(filePath);
     const header = JSON.stringify({
-      type: 'file',
+      type: "file",
       fileName,
       fileSize: stat.size,
-      from: fromName
+      from: fromName,
     } satisfies TransferHeader);
 
     const socket = net.createConnection(targetPort, targetIp, () => {
-      socket.write(header + '\n\n');
+      socket.write(header + "\n\n");
       const readStream = fs.createReadStream(filePath);
       readStream.pipe(socket);
-      readStream.on('end', () => {
+      readStream.on("end", () => {
         socket.end();
       });
     });
 
-    socket.on('close', () => resolve());
-    socket.on('error', reject);
+    socket.on("close", () => resolve());
+    socket.on("error", reject);
   });
 }
 
@@ -341,24 +341,24 @@ export async function sendFolder(
 
     await new Promise<void>((resolve, reject) => {
       const header = JSON.stringify({
-        type: 'file',
+        type: "file",
         fileName: path.basename(filePath),
         fileSize: stat.size,
         from: fromName,
         folderName,
         relativePath,
-        totalFiles: files.length
+        totalFiles: files.length,
       } satisfies TransferHeader);
 
       const socket = net.createConnection(targetPort, targetIp, () => {
-        socket.write(header + '\n\n');
+        socket.write(header + "\n\n");
         const readStream = fs.createReadStream(filePath);
         readStream.pipe(socket);
-        readStream.on('end', () => socket.end());
+        readStream.on("end", () => socket.end());
       });
 
-      socket.on('close', () => resolve());
-      socket.on('error', reject);
+      socket.on("close", () => resolve());
+      socket.on("error", reject);
     });
   }
 }
@@ -371,19 +371,19 @@ export function sendText(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const header = JSON.stringify({
-      type: 'text',
+      type: "text",
       from: fromName,
-      fileSize: Buffer.byteLength(text)
+      fileSize: Buffer.byteLength(text),
     } satisfies TransferHeader);
 
     const socket = net.createConnection(targetPort, targetIp, () => {
-      socket.write(header + '\n\n');
+      socket.write(header + "\n\n");
       socket.write(text);
       socket.end();
     });
 
-    socket.on('close', () => resolve());
-    socket.on('error', reject);
+    socket.on("close", () => resolve());
+    socket.on("error", reject);
   });
 }
 
@@ -394,35 +394,35 @@ export function sendClipboardData(
   fromName: string
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (clipData.type === 'text' && clipData.text !== undefined) {
+    if (clipData.type === "text" && clipData.text !== undefined) {
       const header = JSON.stringify({
-        type: 'clipboard-text',
+        type: "clipboard-text",
         from: fromName,
-        fileSize: Buffer.byteLength(clipData.text)
+        fileSize: Buffer.byteLength(clipData.text),
       } satisfies TransferHeader);
       const socket = net.createConnection(targetPort, targetIp, () => {
-        socket.write(header + '\n\n');
+        socket.write(header + "\n\n");
         socket.write(clipData.text!);
         socket.end();
       });
-      socket.on('close', () => resolve());
-      socket.on('error', reject);
-    } else if (clipData.type === 'image' && clipData.imageBuffer !== undefined) {
+      socket.on("close", () => resolve());
+      socket.on("error", reject);
+    } else if (clipData.type === "image" && clipData.imageBuffer !== undefined) {
       const header = JSON.stringify({
-        type: 'clipboard-image',
+        type: "clipboard-image",
         fileName: `clipboard_${Date.now()}.png`,
         fileSize: clipData.imageBuffer.length,
-        from: fromName
+        from: fromName,
       } satisfies TransferHeader);
       const socket = net.createConnection(targetPort, targetIp, () => {
-        socket.write(header + '\n\n');
+        socket.write(header + "\n\n");
         socket.write(clipData.imageBuffer!);
         socket.end();
       });
-      socket.on('close', () => resolve());
-      socket.on('error', reject);
+      socket.on("close", () => resolve());
+      socket.on("error", reject);
     } else {
-      reject(new Error('Invalid clipboard data'));
+      reject(new Error("Invalid clipboard data"));
     }
   });
 }

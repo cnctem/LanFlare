@@ -1,6 +1,6 @@
-import { EventEmitter } from 'events';
-import WebSocket from 'ws';
-import { getDeviceName, generateId } from './utils';
+import { EventEmitter } from "events";
+import WebSocket from "ws";
+import { getDeviceName, generateId } from "./utils";
 
 const AUTH_PORT = 53322;
 const AUTH_TIMEOUT = 30000; // 30 seconds for user to respond
@@ -14,7 +14,7 @@ export interface ConnectionRequest {
 }
 
 interface AuthMessage {
-  type: 'connection-request' | 'connection-response';
+  type: "connection-request" | "connection-response";
   requestId: string;
   fromDeviceId: string;
   fromDeviceName: string;
@@ -51,25 +51,25 @@ export class ConnectionAuth extends EventEmitter {
   start(): void {
     this.server = new WebSocket.Server({ port: AUTH_PORT });
 
-    this.server.on('connection', (socket: WebSocket, req) => {
-      const clientIp = req.socket.remoteAddress?.replace('::ffff:', '') || 'unknown';
-      
-      socket.on('message', (data: WebSocket.RawData) => {
+    this.server.on("connection", (socket: WebSocket, req) => {
+      const clientIp = req.socket.remoteAddress?.replace("::ffff:", "") || "unknown";
+
+      socket.on("message", (data: WebSocket.RawData) => {
         try {
           const msg: AuthMessage = JSON.parse(data.toString());
-          
-          if (msg.type === 'connection-request') {
+
+          if (msg.type === "connection-request") {
             this._handleConnectionRequest(msg, clientIp, socket);
-          } else if (msg.type === 'connection-response') {
+          } else if (msg.type === "connection-response") {
             this._handleConnectionResponse(msg);
           }
         } catch (err) {
-          console.error('Error handling auth message:', err);
+          console.error("Error handling auth message:", err);
         }
       });
 
-      socket.on('error', (err: Error) => {
-        console.error('Auth WebSocket error:', err);
+      socket.on("error", (err: Error) => {
+        console.error("Auth WebSocket error:", err);
       });
     });
 
@@ -81,7 +81,7 @@ export class ConnectionAuth extends EventEmitter {
       for (const [deviceId, expireTime] of this.authorizedConnections.entries()) {
         if (now > expireTime) {
           this.authorizedConnections.delete(deviceId);
-          this.emit('authorization-expired', deviceId);
+          this.emit("authorization-expired", deviceId);
         }
       }
     }, 60000);
@@ -92,29 +92,29 @@ export class ConnectionAuth extends EventEmitter {
     return new Promise((resolve, reject) => {
       const requestId = generateId();
       const ws = new WebSocket(`ws://${deviceIp}:${AUTH_PORT}`);
-      
+
       const timeout = setTimeout(() => {
         ws.close();
         this.outgoingRequestSockets.delete(requestId);
-        reject(new Error('连接请求超时'));
+        reject(new Error("连接请求超时"));
       }, AUTH_TIMEOUT);
 
-      ws.on('open', () => {
+      ws.on("open", () => {
         const request: AuthMessage = {
-          type: 'connection-request',
+          type: "connection-request",
           requestId,
           fromDeviceId: this.deviceId,
           fromDeviceName: getDeviceName(),
-          timestamp: Date.now()
+          timestamp: Date.now(),
         };
         ws.send(JSON.stringify(request));
         this.outgoingRequestSockets.set(requestId, ws);
       });
 
-      ws.on('message', (data: WebSocket.RawData) => {
+      ws.on("message", (data: WebSocket.RawData) => {
         try {
           const msg: AuthMessage = JSON.parse(data.toString());
-          if (msg.type === 'connection-response' && msg.requestId === requestId) {
+          if (msg.type === "connection-response" && msg.requestId === requestId) {
             clearTimeout(timeout);
             ws.close();
             this.outgoingRequestSockets.delete(requestId);
@@ -124,15 +124,15 @@ export class ConnectionAuth extends EventEmitter {
               this.authorizedConnections.set(targetDeviceId, Date.now() + 3600000);
               resolve(true);
             } else {
-              reject(new Error('连接请求被拒绝'));
+              reject(new Error("连接请求被拒绝"));
             }
           }
         } catch (err) {
-          console.error('Error parsing response:', err);
+          console.error("Error parsing response:", err);
         }
       });
 
-      ws.on('error', (err: Error) => {
+      ws.on("error", (err: Error) => {
         clearTimeout(timeout);
         this.outgoingRequestSockets.delete(requestId);
         reject(err);
@@ -143,18 +143,18 @@ export class ConnectionAuth extends EventEmitter {
   // Handle incoming connection request
   private _handleConnectionRequest(msg: AuthMessage, fromIp: string, socket: WebSocket): void {
     const requestId = msg.requestId;
-    
+
     // Check if already authorized
     const existingAuth = this.authorizedConnections.get(msg.fromDeviceId);
     if (existingAuth && Date.now() < existingAuth) {
       // Already authorized, auto-approve
       const response: AuthMessage = {
-        type: 'connection-response',
+        type: "connection-response",
         requestId,
         fromDeviceId: this.deviceId,
         fromDeviceName: getDeviceName(),
         approved: true,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
       socket.send(JSON.stringify(response));
       return;
@@ -165,12 +165,12 @@ export class ConnectionAuth extends EventEmitter {
       this.pendingRequests.delete(requestId);
       // Auto-reject on timeout
       const response: AuthMessage = {
-        type: 'connection-response',
+        type: "connection-response",
         requestId,
         fromDeviceId: this.deviceId,
         fromDeviceName: getDeviceName(),
         approved: false,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify(response));
@@ -184,7 +184,7 @@ export class ConnectionAuth extends EventEmitter {
       fromDeviceName: msg.fromDeviceName,
       fromIp,
       timestamp: msg.timestamp,
-      timeoutHandle
+      timeoutHandle,
     };
     this.pendingRequests.set(requestId, pendingRequest);
 
@@ -192,12 +192,12 @@ export class ConnectionAuth extends EventEmitter {
     (socket as any).__requestId = requestId;
 
     // Emit event for UI to show approval dialog
-    this.emit('connection-request', {
+    this.emit("connection-request", {
       requestId,
       fromDeviceId: msg.fromDeviceId,
       fromDeviceName: msg.fromDeviceName,
       fromIp,
-      timestamp: msg.timestamp
+      timestamp: msg.timestamp,
     });
   }
 
@@ -219,12 +219,12 @@ export class ConnectionAuth extends EventEmitter {
 
     // Send approval response
     const response: AuthMessage = {
-      type: 'connection-response',
+      type: "connection-response",
       requestId,
       fromDeviceId: this.deviceId,
       fromDeviceName: getDeviceName(),
       approved: true,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     // Find the socket with this requestId
@@ -236,7 +236,7 @@ export class ConnectionAuth extends EventEmitter {
       });
     }
 
-    this.emit('connection-approved', request.fromDeviceId);
+    this.emit("connection-approved", request.fromDeviceId);
   }
 
   // Reject a pending connection request
@@ -249,12 +249,12 @@ export class ConnectionAuth extends EventEmitter {
 
     // Send rejection response
     const response: AuthMessage = {
-      type: 'connection-response',
+      type: "connection-response",
       requestId,
       fromDeviceId: this.deviceId,
       fromDeviceName: getDeviceName(),
       approved: false,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     // Find the socket with this requestId
@@ -266,26 +266,26 @@ export class ConnectionAuth extends EventEmitter {
       });
     }
 
-    this.emit('connection-rejected', request.fromDeviceId);
+    this.emit("connection-rejected", request.fromDeviceId);
   }
 
   // Check if a device is authorized
   isAuthorized(deviceId: string): boolean {
     const expireTime = this.authorizedConnections.get(deviceId);
     if (!expireTime) return false;
-    
+
     if (Date.now() > expireTime) {
       this.authorizedConnections.delete(deviceId);
       return false;
     }
-    
+
     return true;
   }
 
   // Manually revoke authorization
   revokeAuthorization(deviceId: string): void {
     this.authorizedConnections.delete(deviceId);
-    this.emit('authorization-revoked', deviceId);
+    this.emit("authorization-revoked", deviceId);
   }
 
   stop(): void {

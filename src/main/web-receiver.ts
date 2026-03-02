@@ -39,7 +39,7 @@ function getLoginPage(error: boolean): string {
     <input type="password" name="password" placeholder="访问密码" autofocus>
     <button type="submit">确认访问</button>
   </form>
-  ${error ? '<div class="err">密码错误，请重试</div>' : ''}
+  ${error ? '<div class="err">密码错误，请重试</div>' : ""}
 </div>
 </body></html>`;
 }
@@ -61,7 +61,7 @@ export class WebReceiver {
   private transferServer: TransferServer;
   private server: http.Server | null = null;
   private enabled: boolean = true;
-  private password: string = '';
+  private password: string = "";
   private sessions: Map<string, number> = new Map(); // token → expiry ms
   private readonly SESSION_TTL = 24 * 60 * 60 * 1000; // 24 h
 
@@ -83,11 +83,15 @@ export class WebReceiver {
     this.sessions.clear(); // invalidate all existing sessions
   }
 
-  isEnabled(): boolean { return this.enabled; }
-  getPassword(): string { return this.password; }
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+  getPassword(): string {
+    return this.password;
+  }
 
   private _generateToken(): string {
-    return crypto.randomBytes(24).toString('hex');
+    return crypto.randomBytes(24).toString("hex");
   }
 
   private _parseCookieToken(cookie: string): string | null {
@@ -97,7 +101,7 @@ export class WebReceiver {
 
   private _isAuthenticated(req: http.IncomingMessage): boolean {
     if (!this.password) return true;
-    const cookie = (req.headers['cookie'] as string) || '';
+    const cookie = (req.headers["cookie"] as string) || "";
     const token = this._parseCookieToken(cookie);
     if (!token) return false;
     const expiry = this.sessions.get(token);
@@ -110,25 +114,28 @@ export class WebReceiver {
 
   private _handleAuth(req: http.IncomingMessage, res: http.ServerResponse): void {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk: Buffer) => chunks.push(chunk));
-    req.on('end', () => {
-      const body = Buffer.concat(chunks).toString('utf8');
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => {
+      const body = Buffer.concat(chunks).toString("utf8");
       const params = new URLSearchParams(body);
-      const submitted = params.get('password') || '';
+      const submitted = params.get("password") || "";
       if (submitted === this.password) {
         const token = this._generateToken();
         this.sessions.set(token, Date.now() + this.SESSION_TTL);
         res.writeHead(302, {
-          Location: '/',
-          'Set-Cookie': `wrsession=${token}; Path=/; HttpOnly; Max-Age=86400`
+          Location: "/",
+          "Set-Cookie": `wrsession=${token}; Path=/; HttpOnly; Max-Age=86400`,
         });
         res.end();
       } else {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(getLoginPage(true));
       }
     });
-    req.on('error', () => { res.writeHead(400); res.end(); });
+    req.on("error", () => {
+      res.writeHead(400);
+      res.end();
+    });
   }
 
   start(): void {
@@ -140,10 +147,7 @@ export class WebReceiver {
       // CORS
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader(
-        "Access-Control-Allow-Headers",
-        "Content-Type, X-Filename, X-Filesize",
-      );
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Filename, X-Filesize");
 
       if (req.method === "OPTIONS") {
         res.writeHead(204);
@@ -151,33 +155,40 @@ export class WebReceiver {
         return;
       }
 
-      const url = req.url?.split('?')[0] ?? "/";
+      const url = req.url?.split("?")[0] ?? "/";
 
       // Auth endpoint – always accessible
-      if (req.method === 'POST' && url === '/auth') {
+      if (req.method === "POST" && url === "/auth") {
         this._handleAuth(req, res);
         return;
       }
 
       // Logout
-      if (req.method === 'GET' && url === '/logout') {
-        const cookie = (req.headers['cookie'] as string) || '';
+      if (req.method === "GET" && url === "/logout") {
+        const cookie = (req.headers["cookie"] as string) || "";
         const token = this._parseCookieToken(cookie);
         if (token) this.sessions.delete(token);
-        res.writeHead(302, { Location: '/',
-          'Set-Cookie': 'wrsession=; Path=/; HttpOnly; Max-Age=0' });
+        res.writeHead(302, {
+          Location: "/",
+          "Set-Cookie": "wrsession=; Path=/; HttpOnly; Max-Age=0",
+        });
         res.end();
         return;
       }
 
       // Auth gate
       if (!this._isAuthenticated(req)) {
-        const isApiRoute = url === '/files' || url.startsWith('/folder-files') || url === '/upload' || url === '/text' || url.startsWith('/download/');
+        const isApiRoute =
+          url === "/files" ||
+          url.startsWith("/folder-files") ||
+          url === "/upload" ||
+          url === "/text" ||
+          url.startsWith("/download/");
         if (isApiRoute) {
-          res.writeHead(401, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Unauthorized' }));
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Unauthorized" }));
         } else {
-          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
           res.end(getLoginPage(false));
         }
         return;
@@ -227,12 +238,8 @@ export class WebReceiver {
     if (!fs.existsSync(SAVE_DIR)) fs.mkdirSync(SAVE_DIR, { recursive: true });
   }
 
-  private _handleFileUpload(
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-  ): void {
-    const rawName =
-      (req.headers["x-filename"] as string) || `upload_${Date.now()}`;
+  private _handleFileUpload(req: http.IncomingMessage, res: http.ServerResponse): void {
+    const rawName = (req.headers["x-filename"] as string) || `upload_${Date.now()}`;
     const fileName = decodeURIComponent(rawName).replace(/[/\\?%*:|"<>]/g, "_");
     const fileSize = parseInt((req.headers["x-filesize"] as string) || "0");
     const rawRelPath = (req.headers["x-relative-path"] as string) || "";
@@ -246,7 +253,11 @@ export class WebReceiver {
         .split(/[/\\]/)
         .map((p) => p.replace(/[?%*:|"<>]/g, "_"))
         .filter((p) => p && p !== ".." && p !== ".");
-      if (relParts.length === 0) { res.writeHead(400); res.end("Bad relative path"); return; }
+      if (relParts.length === 0) {
+        res.writeHead(400);
+        res.end("Bad relative path");
+        return;
+      }
       savePath = path.join(SAVE_DIR, folderName, ...relParts);
       fs.mkdirSync(path.dirname(savePath), { recursive: true });
     } else {
@@ -287,10 +298,7 @@ export class WebReceiver {
     });
   }
 
-  private _handleTextUpload(
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-  ): void {
+  private _handleTextUpload(req: http.IncomingMessage, res: http.ServerResponse): void {
     const chunks: Buffer[] = [];
     req.on("data", (chunk: Buffer) => chunks.push(chunk));
     req.on("end", () => {
@@ -313,10 +321,7 @@ export class WebReceiver {
     });
   }
 
-  private _handleFileList(
-    _req: http.IncomingMessage,
-    res: http.ServerResponse,
-  ): void {
+  private _handleFileList(_req: http.IncomingMessage, res: http.ServerResponse): void {
     this._ensureSaveDir();
     try {
       const entries = fs.readdirSync(SAVE_DIR, { withFileTypes: true });
@@ -327,21 +332,40 @@ export class WebReceiver {
         try {
           if (entry.isFile()) {
             const stat = fs.statSync(fullPath);
-            files.push({ name: entry.name, size: stat.size, mtime: stat.mtimeMs });
+            files.push({
+              name: entry.name,
+              size: stat.size,
+              mtime: stat.mtimeMs,
+            });
           } else if (entry.isDirectory()) {
             const allFiles = this._getAllFiles(fullPath);
-            let totalSize = 0, maxMtime = 0;
+            let totalSize = 0,
+              maxMtime = 0;
             for (const f of allFiles) {
-              try { const s = fs.statSync(f); totalSize += s.size; if (s.mtimeMs > maxMtime) maxMtime = s.mtimeMs; } catch {}
+              try {
+                const s = fs.statSync(f);
+                totalSize += s.size;
+                if (s.mtimeMs > maxMtime) maxMtime = s.mtimeMs;
+              } catch {}
             }
-            folders.push({ name: entry.name, count: allFiles.length, size: totalSize, mtime: maxMtime });
+            folders.push({
+              name: entry.name,
+              count: allFiles.length,
+              size: totalSize,
+              mtime: maxMtime,
+            });
           }
         } catch {}
       }
       files.sort((a, b) => b.mtime - a.mtime);
       folders.sort((a, b) => b.mtime - a.mtime);
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ files: files.slice(0, 200), folders: folders.slice(0, 100) }));
+      res.end(
+        JSON.stringify({
+          files: files.slice(0, 200),
+          folders: folders.slice(0, 100),
+        })
+      );
     } catch (err) {
       const error = err as Error;
       res.writeHead(500, { "Content-Type": "application/json" });
@@ -349,25 +373,40 @@ export class WebReceiver {
     }
   }
 
-  private _handleFolderFiles(
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-  ): void {
+  private _handleFolderFiles(req: http.IncomingMessage, res: http.ServerResponse): void {
     const qs = new URLSearchParams((req.url ?? "").split("?")[1] ?? "");
     const folderRaw = decodeURIComponent(qs.get("name") ?? "");
     const folderName = path.basename(folderRaw);
-    if (!folderName) { res.writeHead(400); res.end("Bad Request"); return; }
+    if (!folderName) {
+      res.writeHead(400);
+      res.end("Bad Request");
+      return;
+    }
     const folderPath = path.join(SAVE_DIR, folderName);
-    if (!folderPath.startsWith(SAVE_DIR + path.sep) || !fs.existsSync(folderPath) || !fs.statSync(folderPath).isDirectory()) {
-      res.writeHead(404); res.end("Not Found"); return;
+    if (
+      !folderPath.startsWith(SAVE_DIR + path.sep) ||
+      !fs.existsSync(folderPath) ||
+      !fs.statSync(folderPath).isDirectory()
+    ) {
+      res.writeHead(404);
+      res.end("Not Found");
+      return;
     }
     const allFiles = this._getAllFiles(folderPath);
-    const result = allFiles.map((f) => {
-      try {
-        const stat = fs.statSync(f);
-        return { name: path.relative(folderPath, f).replace(/\\/g, "/"), size: stat.size, mtime: stat.mtimeMs };
-      } catch { return null; }
-    }).filter((f): f is { name: string; size: number; mtime: number } => f !== null);
+    const result = allFiles
+      .map((f) => {
+        try {
+          const stat = fs.statSync(f);
+          return {
+            name: path.relative(folderPath, f).replace(/\\/g, "/"),
+            size: stat.size,
+            mtime: stat.mtimeMs,
+          };
+        } catch {
+          return null;
+        }
+      })
+      .filter((f): f is { name: string; size: number; mtime: number } => f !== null);
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(JSON.stringify({ files: result, folderName }));
   }
@@ -385,15 +424,17 @@ export class WebReceiver {
     return files;
   }
 
-  private _handleFileDownload(
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-  ): void {
+  private _handleFileDownload(req: http.IncomingMessage, res: http.ServerResponse): void {
     const rawPath = decodeURIComponent((req.url ?? "").slice("/download/".length));
-    const parts = rawPath.split(/[\/\\]/)
+    const parts = rawPath
+      .split(/[\/\\]/)
       .map((p) => p.trim())
       .filter((p) => p && p !== ".." && p !== ".");
-    if (parts.length === 0) { res.writeHead(404); res.end("Not Found"); return; }
+    if (parts.length === 0) {
+      res.writeHead(404);
+      res.end("Not Found");
+      return;
+    }
     const filePath = path.join(SAVE_DIR, ...parts);
 
     if (

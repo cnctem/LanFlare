@@ -1,15 +1,15 @@
-import WebSocket, { WebSocketServer } from 'ws';
-import { clipboard, nativeImage } from 'electron';
-import { EventEmitter } from 'events';
-import * as fs from 'fs';
-import * as path from 'path';
+import WebSocket, { WebSocketServer } from "ws";
+import { clipboard, nativeImage } from "electron";
+import { EventEmitter } from "events";
+import * as fs from "fs";
+import * as path from "path";
 
 const WS_PORT = 53320;
 const POLL_INTERVAL = 500;
 
 interface ClipboardMessage {
-  type: 'clipboard-update';
-  contentType: 'text' | 'image' | 'files' | 'folder';
+  type: "clipboard-update";
+  contentType: "text" | "image" | "files" | "folder";
   content: string;
   from: string;
   timestamp: number;
@@ -38,27 +38,27 @@ export class ClipboardSync extends EventEmitter {
     super();
     this.wsServer = null;
     this.enabled = false;
-    this.lastClipText = '';
-    this.lastImageHash = '';
-    this.lastFilePaths = '';
-    this.lastFolderPath = '';
+    this.lastClipText = "";
+    this.lastImageHash = "";
+    this.lastFilePaths = "";
+    this.lastFolderPath = "";
     this.pollTimer = null;
     this.connectedPeers = new Map();
     this.suppressNextChange = false;
-    this.deviceName = 'Unknown';
+    this.deviceName = "Unknown";
     this.receivedMessageIds = new Set();
   }
 
   startServer(): void {
-    this.wsServer = new WebSocketServer({ port: WS_PORT, host: '0.0.0.0' });
+    this.wsServer = new WebSocketServer({ port: WS_PORT, host: "0.0.0.0" });
 
-    this.wsServer.on('connection', (ws, req) => {
+    this.wsServer.on("connection", (ws, req) => {
       console.log(`Clipboard sync peer connected: ${req.socket.remoteAddress}`);
 
-      ws.on('message', (data) => {
+      ws.on("message", (data) => {
         try {
           const msg: ClipboardMessage = JSON.parse(data.toString());
-          if (msg.type === 'clipboard-update' && this.enabled) {
+          if (msg.type === "clipboard-update" && this.enabled) {
             // Deduplicate by message ID
             if (this.receivedMessageIds.has(msg.messageId)) return;
             this.receivedMessageIds.add(msg.messageId);
@@ -69,31 +69,35 @@ export class ClipboardSync extends EventEmitter {
             }
 
             this.suppressNextChange = true;
-            if (msg.contentType === 'text') {
+            if (msg.contentType === "text") {
               clipboard.writeText(msg.content);
               this.lastClipText = msg.content;
-            } else if (msg.contentType === 'image') {
-              const imgBuf = Buffer.from(msg.content, 'base64');
+            } else if (msg.contentType === "image") {
+              const imgBuf = Buffer.from(msg.content, "base64");
               const img = nativeImage.createFromBuffer(imgBuf);
               clipboard.writeImage(img);
               this.lastImageHash = this._getImageHash(img);
-            } else if (msg.contentType === 'files') {
+            } else if (msg.contentType === "files") {
               // Write file paths as text (Electron limitation)
               clipboard.writeText(msg.content);
               this.lastFilePaths = msg.content;
-            } else if (msg.contentType === 'folder') {
+            } else if (msg.contentType === "folder") {
               // Write folder path as text
               clipboard.writeText(msg.content);
               this.lastFolderPath = msg.content;
             }
-            this.emit('clipboard-received', {
+            this.emit("clipboard-received", {
               contentType: msg.contentType,
               from: msg.from,
-              preview: msg.contentType === 'text' ? msg.content.substring(0, 100) : 
-                       msg.contentType === 'image' ? '[图片]' : 
-                       msg.contentType === 'folder' ? `[文件夹: ${msg.folderInfo?.name || ''}]` :
-                       '[文件路径]',
-              folderInfo: msg.folderInfo
+              preview:
+                msg.contentType === "text"
+                  ? msg.content.substring(0, 100)
+                  : msg.contentType === "image"
+                    ? "[图片]"
+                    : msg.contentType === "folder"
+                      ? `[文件夹: ${msg.folderInfo?.name || ""}]`
+                      : "[文件路径]",
+              folderInfo: msg.folderInfo,
             });
           }
         } catch {
@@ -101,13 +105,13 @@ export class ClipboardSync extends EventEmitter {
         }
       });
 
-      ws.on('close', () => {
-        console.log('Clipboard sync peer disconnected');
+      ws.on("close", () => {
+        console.log("Clipboard sync peer disconnected");
       });
     });
 
-    this.wsServer.on('error', (err) => {
-      console.error('Clipboard sync server error:', err);
+    this.wsServer.on("error", (err) => {
+      console.error("Clipboard sync server error:", err);
     });
   }
 
@@ -116,15 +120,15 @@ export class ClipboardSync extends EventEmitter {
 
     const ws = new WebSocket(`ws://${ip}:${port}`);
 
-    ws.on('open', () => {
+    ws.on("open", () => {
       this.connectedPeers.set(deviceId, ws);
-      this.emit('peer-connected', deviceId);
+      this.emit("peer-connected", deviceId);
     });
 
-    ws.on('message', (data) => {
+    ws.on("message", (data) => {
       try {
         const msg: ClipboardMessage = JSON.parse(data.toString());
-        if (msg.type === 'clipboard-update' && this.enabled) {
+        if (msg.type === "clipboard-update" && this.enabled) {
           // Deduplicate by message ID
           if (this.receivedMessageIds.has(msg.messageId)) return;
           this.receivedMessageIds.add(msg.messageId);
@@ -134,29 +138,33 @@ export class ClipboardSync extends EventEmitter {
           }
 
           this.suppressNextChange = true;
-          if (msg.contentType === 'text') {
+          if (msg.contentType === "text") {
             clipboard.writeText(msg.content);
             this.lastClipText = msg.content;
-          } else if (msg.contentType === 'image') {
-            const imgBuf = Buffer.from(msg.content, 'base64');
+          } else if (msg.contentType === "image") {
+            const imgBuf = Buffer.from(msg.content, "base64");
             const img = nativeImage.createFromBuffer(imgBuf);
             clipboard.writeImage(img);
             this.lastImageHash = this._getImageHash(img);
-          } else if (msg.contentType === 'files') {
+          } else if (msg.contentType === "files") {
             clipboard.writeText(msg.content);
             this.lastFilePaths = msg.content;
-          } else if (msg.contentType === 'folder') {
+          } else if (msg.contentType === "folder") {
             clipboard.writeText(msg.content);
             this.lastFolderPath = msg.content;
           }
-          this.emit('clipboard-received', {
+          this.emit("clipboard-received", {
             contentType: msg.contentType,
             from: msg.from,
-            preview: msg.contentType === 'text' ? msg.content.substring(0, 100) : 
-                     msg.contentType === 'image' ? '[图片]' : 
-                     msg.contentType === 'folder' ? `[文件夹: ${msg.folderInfo?.name || ''}]` :
-                     '[文件路径]',
-            folderInfo: msg.folderInfo
+            preview:
+              msg.contentType === "text"
+                ? msg.content.substring(0, 100)
+                : msg.contentType === "image"
+                  ? "[图片]"
+                  : msg.contentType === "folder"
+                    ? `[文件夹: ${msg.folderInfo?.name || ""}]`
+                    : "[文件路径]",
+            folderInfo: msg.folderInfo,
           });
         }
       } catch {
@@ -164,12 +172,12 @@ export class ClipboardSync extends EventEmitter {
       }
     });
 
-    ws.on('close', () => {
+    ws.on("close", () => {
       this.connectedPeers.delete(deviceId);
-      this.emit('peer-disconnected', deviceId);
+      this.emit("peer-disconnected", deviceId);
     });
 
-    ws.on('error', () => {
+    ws.on("error", () => {
       this.connectedPeers.delete(deviceId);
     });
   }
@@ -187,11 +195,11 @@ export class ClipboardSync extends EventEmitter {
     if (deviceName) this.deviceName = deviceName;
 
     if (enabled && !this.pollTimer) {
-      this.lastClipText = clipboard.readText() || '';
+      this.lastClipText = clipboard.readText() || "";
       const img = clipboard.readImage();
-      this.lastImageHash = img.isEmpty() ? '' : this._getImageHash(img);
-      this.lastFilePaths = '';
-      this.lastFolderPath = '';
+      this.lastImageHash = img.isEmpty() ? "" : this._getImageHash(img);
+      this.lastFilePaths = "";
+      this.lastFolderPath = "";
       this.pollTimer = setInterval(() => this._pollClipboard(), POLL_INTERVAL);
     } else if (!enabled && this.pollTimer) {
       clearInterval(this.pollTimer);
@@ -206,67 +214,76 @@ export class ClipboardSync extends EventEmitter {
       return;
     }
 
-    const currentText = clipboard.readText() || '';
+    const currentText = clipboard.readText() || "";
     const currentImage = clipboard.readImage();
-    const currentImageHash = currentImage.isEmpty() ? '' : this._getImageHash(currentImage);
+    const currentImageHash = currentImage.isEmpty() ? "" : this._getImageHash(currentImage);
 
     // Check for folder path (Windows/Mac/Linux format)
     const folderCheck = this._checkIfFolder(currentText);
     if (folderCheck.isFolder && currentText !== this.lastFolderPath) {
       this.lastFolderPath = currentText;
-      this.lastClipText = '';
-      this.lastImageHash = '';
+      this.lastClipText = "";
+      this.lastImageHash = "";
       this._broadcast({
-        type: 'clipboard-update',
-        contentType: 'folder',
+        type: "clipboard-update",
+        contentType: "folder",
         content: currentText,
         from: this.deviceName,
         timestamp: Date.now(),
         messageId: this._generateMessageId(),
-        folderInfo: folderCheck.info
+        folderInfo: folderCheck.info,
       });
     }
     // Check for file paths
-    else if (currentText && this._looksLikeFilePaths(currentText) && currentText !== this.lastFilePaths) {
+    else if (
+      currentText &&
+      this._looksLikeFilePaths(currentText) &&
+      currentText !== this.lastFilePaths
+    ) {
       this.lastFilePaths = currentText;
-      this.lastClipText = '';
-      this.lastImageHash = '';
+      this.lastClipText = "";
+      this.lastImageHash = "";
       this._broadcast({
-        type: 'clipboard-update',
-        contentType: 'files',
+        type: "clipboard-update",
+        contentType: "files",
         content: currentText,
         from: this.deviceName,
         timestamp: Date.now(),
-        messageId: this._generateMessageId()
+        messageId: this._generateMessageId(),
       });
     }
     // Check text change
-    else if (currentText && currentText !== this.lastClipText && currentImageHash === '' && !this._looksLikeFilePaths(currentText)) {
+    else if (
+      currentText &&
+      currentText !== this.lastClipText &&
+      currentImageHash === "" &&
+      !this._looksLikeFilePaths(currentText)
+    ) {
       this.lastClipText = currentText;
-      this.lastImageHash = '';
-      this.lastFolderPath = '';
+      this.lastImageHash = "";
+      this.lastFolderPath = "";
       this._broadcast({
-        type: 'clipboard-update',
-        contentType: 'text',
+        type: "clipboard-update",
+        contentType: "text",
         content: currentText,
         from: this.deviceName,
         timestamp: Date.now(),
-        messageId: this._generateMessageId()
+        messageId: this._generateMessageId(),
       });
     }
     // Check image change
     else if (currentImageHash && currentImageHash !== this.lastImageHash) {
       this.lastImageHash = currentImageHash;
-      this.lastClipText = '';
-      this.lastFolderPath = '';
-      const imgBase64 = currentImage.toPNG().toString('base64');
+      this.lastClipText = "";
+      this.lastFolderPath = "";
+      const imgBase64 = currentImage.toPNG().toString("base64");
       this._broadcast({
-        type: 'clipboard-update',
-        contentType: 'image',
+        type: "clipboard-update",
+        contentType: "image",
         content: imgBase64,
         from: this.deviceName,
         timestamp: Date.now(),
-        messageId: this._generateMessageId()
+        messageId: this._generateMessageId(),
       });
     }
   }
@@ -301,24 +318,27 @@ export class ClipboardSync extends EventEmitter {
 
   private _looksLikeFilePaths(text: string): boolean {
     // Check if text looks like file paths
-    const lines = text.split('\n').filter(l => l.trim());
+    const lines = text.split("\n").filter((l) => l.trim());
     if (lines.length === 0) return false;
-    
+
     // Windows path pattern: C:\path\to\file or \\server\share
     // Unix/Mac path pattern: /path/to/file
     const pathPattern = /^([a-zA-Z]:\\|\\\\|\/).+/;
-    
-    return lines.every(line => pathPattern.test(line.trim()));
+
+    return lines.every((line) => pathPattern.test(line.trim()));
   }
 
-  private _checkIfFolder(text: string): { isFolder: boolean; info?: { name: string; fileCount: number; totalSize: number } } {
-    if (!text || text.includes('\n')) return { isFolder: false }; // Only single line
-    
+  private _checkIfFolder(text: string): {
+    isFolder: boolean;
+    info?: { name: string; fileCount: number; totalSize: number };
+  } {
+    if (!text || text.includes("\n")) return { isFolder: false }; // Only single line
+
     const trimmed = text.trim();
     const pathPattern = /^([a-zA-Z]:\\|\\\\|\/).+/;
-    
+
     if (!pathPattern.test(trimmed)) return { isFolder: false };
-    
+
     try {
       const stat = fs.statSync(trimmed);
       if (stat.isDirectory()) {
@@ -328,15 +348,19 @@ export class ClipboardSync extends EventEmitter {
     } catch {
       // Path doesn't exist or not accessible
     }
-    
+
     return { isFolder: false };
   }
 
-  private _getFolderInfo(folderPath: string): { name: string; fileCount: number; totalSize: number } {
+  private _getFolderInfo(folderPath: string): {
+    name: string;
+    fileCount: number;
+    totalSize: number;
+  } {
     const name = path.basename(folderPath);
     let fileCount = 0;
     let totalSize = 0;
-    
+
     try {
       const countFiles = (dir: string) => {
         const items = fs.readdirSync(dir);
@@ -355,12 +379,12 @@ export class ClipboardSync extends EventEmitter {
           }
         }
       };
-      
+
       countFiles(folderPath);
     } catch {
       // Error reading folder
     }
-    
+
     return { name, fileCount, totalSize };
   }
 

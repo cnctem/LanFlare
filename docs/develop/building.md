@@ -39,14 +39,14 @@ npm run build:all
 
 构建完成后，安装包输出到 `dist/` 目录。文件名格式：`LanFlare-{version}-{平台}-{arch}.{ext}`
 
-| 平台 | 架构 | 文件 |
-|------|------|------|
-| Windows | x64 | `LanFlare-1.0.0-Windows-x64-Setup.exe` |
-| Windows portable | x64 | `LanFlare-1.0.0-Windows-x64-Portable.exe` |
-| macOS | arm64 (Apple Silicon) | `LanFlare-1.0.0-macOS-arm64.dmg` / `.zip` |
-| macOS | x64 (Intel) | `LanFlare-1.0.0-macOS-x64.dmg` / `.zip` |
-| Linux | x64 | `LanFlare-1.0.0-Linux-x64.AppImage` / `.deb` / `.rpm` |
-| Linux | arm64 | `LanFlare-1.0.0-Linux-arm64.AppImage` / `.deb` / `.rpm` |
+| 平台             | 架构                  | 文件                                                    |
+| ---------------- | --------------------- | ------------------------------------------------------- |
+| Windows          | x64                   | `LanFlare-1.0.0-Windows-x64-Setup.exe`                  |
+| Windows portable | x64                   | `LanFlare-1.0.0-Windows-x64-Portable.exe`               |
+| macOS            | arm64 (Apple Silicon) | `LanFlare-1.0.0-macOS-arm64.dmg` / `.zip`               |
+| macOS            | x64 (Intel)           | `LanFlare-1.0.0-macOS-x64.dmg` / `.zip`                 |
+| Linux            | x64                   | `LanFlare-1.0.0-Linux-x64.AppImage` / `.deb` / `.rpm`   |
+| Linux            | arm64                 | `LanFlare-1.0.0-Linux-arm64.AppImage` / `.deb` / `.rpm` |
 
 ## 资源准备
 
@@ -54,13 +54,14 @@ npm run build:all
 
 electron-builder 需要以下图标文件（放置在 `build/` 目录）：
 
-| 文件 | 用途 | 尺寸 |
-|------|------|------|
-| `build/icon.ico` | Windows | 256x256 (多尺寸嵌入) |
-| `build/icon.icns` | macOS | 512x512 (多分辨率) |
-| `build/icon.png` | Linux | 512x512 |
+| 文件              | 用途    | 尺寸                 |
+| ----------------- | ------- | -------------------- |
+| `build/icon.ico`  | Windows | 256x256 (多尺寸嵌入) |
+| `build/icon.icns` | macOS   | 512x512 (多分辨率)   |
+| `build/icon.png`  | Linux   | 512x512              |
 
 **生成图标工具**:
+
 - [electron-icon-maker](https://www.npmjs.com/package/electron-icon-maker)
 - [iconutil](https://developer.apple.com/library/archive/documentation/GraphicsAnimation/Conceptual/HighResolutionOSX/Optimizing/Optimizing.html) (macOS)
 - [GIMP](https://www.gimp.org/) (多平台)
@@ -91,6 +92,7 @@ electron-icon-maker --input=./icon-source.png --output=./build
 ```
 
 或使用环境变量（CI/CD 中推荐）：
+
 ```
 CSC_LINK=base64编码的.pfx文件
 CSC_KEY_PASSWORD=证书密码
@@ -121,6 +123,7 @@ APPLE_TEAM_ID=TEAM_ID
 ```
 
 版本格式遵循 [Semantic Versioning](https://semver.org/)：
+
 - **Major**: 不兼容的 API 变更
 - **Minor**: 向下兼容的新功能
 - **Patch**: 向下兼容的 Bug 修复
@@ -143,13 +146,13 @@ git push origin v1.1.0
 
 推送 tag（格式 `v*`）或手动触发时，5 个 job **并行**构建：
 
-| Job | Runner | 产物 |
-|-----|--------|------|
-| `build-windows` | `windows-latest` (x64) | `*-Windows-x64-Setup.exe`, `*-Windows-x64-Portable.exe` |
-| `build-macos-arm64` | `macos-14` (Apple Silicon) | `*-macOS-arm64.dmg`, `*-macOS-arm64.zip` |
-| `build-macos-x64` | `macos-14` (交叉编译) | `*-macOS-x64.dmg`, `*-macOS-x64.zip` |
-| `build-linux-x64` | `ubuntu-latest` | `*-Linux-x64.AppImage/.deb/.rpm` |
-| `build-linux-arm64` | `ubuntu-24.04-arm` | `*-Linux-arm64.AppImage/.deb/.rpm` |
+| Job                 | Runner                     | 产物                                                    |
+| ------------------- | -------------------------- | ------------------------------------------------------- |
+| `build-windows`     | `windows-latest` (x64)     | `*-Windows-x64-Setup.exe`, `*-Windows-x64-Portable.exe` |
+| `build-macos-arm64` | `macos-14` (Apple Silicon) | `*-macOS-arm64.dmg`, `*-macOS-arm64.zip`                |
+| `build-macos-x64`   | `macos-14` (交叉编译)      | `*-macOS-x64.dmg`, `*-macOS-x64.zip`                    |
+| `build-linux-x64`   | `ubuntu-latest`            | `*-Linux-x64.AppImage/.deb/.rpm`                        |
+| `build-linux-arm64` | `ubuntu-24.04-arm`         | `*-Linux-arm64.AppImage/.deb/.rpm`                      |
 
 > **macOS x64 交叉编译**: electron-builder 支持在 Apple Silicon (`macos-14`) 上通过 `--x64` 标志交叉编译 Intel 版本，无需 Intel 机器。`macos-13` 已于 2025 年底被 GitHub 下线。
 
@@ -195,12 +198,7 @@ npm run build:linux -- --arm64 -p never   # 需 Linux arm64 环境
     "directories": {
       "output": "dist"
     },
-    "files": [
-      "dist/main.js",
-      "dist/src/**/*",
-      "src/renderer/**/*",
-      "node_modules/**/*"
-    ],
+    "files": ["dist/main.js", "dist/src/**/*", "src/renderer/**/*", "node_modules/**/*"],
     "win": {
       "target": ["nsis", "portable"],
       "icon": "build/icon.ico"
@@ -396,6 +394,7 @@ npx asar extract dist/mac/LanFlare.app/Contents/Resources/app.asar ./extracted
 3. 完成安装后桌面出现快捷方式
 
 或使用便携版（无需安装）：
+
 1. 下载 `LanFlare-1.0.0-Windows-x64-Portable.exe`
 2. 直接运行
 
@@ -407,6 +406,7 @@ npx asar extract dist/mac/LanFlare.app/Contents/Resources/app.asar ./extracted
 2. 打开 DMG，将 `LanFlare.app` 拖拽到 Applications 文件夹
 
 遇到"无法打开"提示（未签名）:
+
 ```bash
 xattr -cr /Applications/LanFlare.app
 ```
@@ -424,6 +424,7 @@ chmod +x LanFlare-1.0.0-Linux-arm64.AppImage
 ```
 
 或集成到系统：
+
 ```bash
 sudo apt install appimagelauncher
 ```

@@ -1,6 +1,7 @@
-import * as os from 'os';
+import * as os from "os";
 
-const VIRTUAL_IFACE_PATTERN = /virtual|vmware|vbox|hyper-v|wsl|loopback|docker|vethernet|utun|tun|tap|vpn|pseudo|dummy/i;
+const VIRTUAL_IFACE_PATTERN =
+  /virtual|vmware|vbox|hyper-v|wsl|loopback|docker|vethernet|utun|tun|tap|vpn|pseudo|dummy/i;
 
 /** Return all non-internal IPv4 addresses sorted by preference (physical LAN first). */
 function getCandidateIPs(): os.NetworkInterfaceInfo[] {
@@ -10,7 +11,7 @@ function getCandidateIPs(): os.NetworkInterfaceInfo[] {
     if (!addrs) continue;
     if (VIRTUAL_IFACE_PATTERN.test(name)) continue;
     for (const iface of addrs) {
-      if (iface.family === 'IPv4' && !iface.internal) {
+      if (iface.family === "IPv4" && !iface.internal) {
         results.push(iface);
       }
     }
@@ -29,19 +30,19 @@ function lanPriority(ip: string): number {
 
 export function getLocalIP(): string {
   const candidates = getCandidateIPs();
-  return candidates.length > 0 ? candidates[0].address : '127.0.0.1';
+  return candidates.length > 0 ? candidates[0].address : "127.0.0.1";
 }
 
 export function getBroadcastAddress(): string {
   const candidates = getCandidateIPs();
   if (candidates.length > 0) {
     const iface = candidates[0];
-    const ip = iface.address.split('.').map(Number);
-    const mask = iface.netmask.split('.').map(Number);
+    const ip = iface.address.split(".").map(Number);
+    const mask = iface.netmask.split(".").map(Number);
     const broadcast = ip.map((octet, i) => octet | (~mask[i] & 255));
-    return broadcast.join('.');
+    return broadcast.join(".");
   }
-  return '255.255.255.255';
+  return "255.255.255.255";
 }
 
 export function getDeviceName(): string {
@@ -49,11 +50,11 @@ export function getDeviceName(): string {
 }
 
 export function formatSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
+  if (bytes === 0) return "0 B";
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
 
 export function generateId(): string {

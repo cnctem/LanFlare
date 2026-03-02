@@ -1,6 +1,6 @@
-import * as dgram from 'dgram';
-import { EventEmitter } from 'events';
-import { getLocalIP, getBroadcastAddress, getDeviceName, generateId } from './utils';
+import * as dgram from "dgram";
+import { EventEmitter } from "events";
+import { getLocalIP, getBroadcastAddress, getDeviceName, generateId } from "./utils";
 
 const DISCOVERY_PORT = 53318;
 const BROADCAST_INTERVAL = 2000;
@@ -41,9 +41,9 @@ export class Discovery extends EventEmitter {
   }
 
   start(): void {
-    this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+    this.socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
 
-    this.socket.on('message', (msg, rinfo) => {
+    this.socket.on("message", (msg, rinfo) => {
       try {
         const data: DiscoveryMessage = JSON.parse(msg.toString());
         if (data.id === this.deviceId) return;
@@ -55,22 +55,22 @@ export class Discovery extends EventEmitter {
           tcpPort: data.tcpPort,
           wsPort: data.wsPort,
           platform: data.platform,
-          lastSeen: Date.now()
+          lastSeen: Date.now(),
         };
 
         const isNew = !this.devices.has(device.id);
         this.devices.set(device.id, device);
 
         if (isNew) {
-          this.emit('devices-changed', this.getDeviceList());
+          this.emit("devices-changed", this.getDeviceList());
         }
       } catch {
         // ignore malformed messages
       }
     });
 
-    this.socket.on('error', (err) => {
-      console.error('Discovery socket error:', err);
+    this.socket.on("error", (err) => {
+      console.error("Discovery socket error:", err);
     });
 
     this.socket.bind(DISCOVERY_PORT, () => {
@@ -87,7 +87,7 @@ export class Discovery extends EventEmitter {
         name: getDeviceName(),
         tcpPort: 53319,
         wsPort: 53320,
-        platform: process.platform
+        platform: process.platform,
       });
       const buf = Buffer.from(message);
       const broadcastAddr = getBroadcastAddress();
@@ -109,21 +109,21 @@ export class Discovery extends EventEmitter {
         }
       }
       if (changed) {
-        this.emit('devices-changed', this.getDeviceList());
+        this.emit("devices-changed", this.getDeviceList());
       }
     }, 3000);
   }
 
-  getDeviceList(includeSelf?: boolean): Omit<DeviceInfo, 'lastSeen'>[] {
+  getDeviceList(includeSelf?: boolean): Omit<DeviceInfo, "lastSeen">[] {
     const list = Array.from(this.devices.values()).map((d) => ({
       id: d.id,
       name: d.name,
       ip: d.ip,
       tcpPort: d.tcpPort,
       wsPort: d.wsPort,
-      platform: d.platform
+      platform: d.platform,
     }));
-    
+
     if (includeSelf) {
       list.push({
         id: this.deviceId,
@@ -131,10 +131,10 @@ export class Discovery extends EventEmitter {
         ip: getLocalIP(),
         tcpPort: 53319,
         wsPort: 53320,
-        platform: process.platform
+        platform: process.platform,
       });
     }
-    
+
     return list;
   }
 
