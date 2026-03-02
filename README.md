@@ -26,7 +26,7 @@
 
 ## 📸 截图
 
-> 待添加应用截图
+> ![root-panel](docs/assets/root-panel.png)
 
 ## 🚀 快速开始
 
